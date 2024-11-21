@@ -168,3 +168,4 @@ cython_debug/
 3_Frame_sampling/2_YOLO_filtered_frames/yolodet_frames_metadata.csv
 3_Frame_sampling/3_pHASH_filtered_frames/pHASH_frames_metadata.csv
 3_Frame_sampling/Fully_processed_frames/processed_frames_metadata.csv
+4_Run_YOLOv11_det_seg/Output_masked_frames/masked_frames_metadata.csv
