@@ -162,7 +162,9 @@ cython_debug/
 #.idea/
 .DS_Store
 *.png
+*.mp4
 *.pt
+*.pth
 2_Video_sampling/valid_videos_names.json
 3_Frame_sampling/1_Raw_extracted_frames/raw_frames_metadata.csv
 3_Frame_sampling/2_YOLO_filtered_frames/yolodet_frames_metadata.csv
