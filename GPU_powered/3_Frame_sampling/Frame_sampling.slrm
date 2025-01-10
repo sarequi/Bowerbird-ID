@@ -1,0 +1,27 @@
+#!/bin/bash
+#
+#SBATCH -J frame_sampling              # Job name
+#SBATCH --partition=zen2_0256_a40x2    # GPU-enabled partition
+#SBATCH --qos=zen2_0256_a40x2          # Quality of Service for the partition
+#SBATCH --gres=gpu:1                   # Request 1 GPU (half-node)
+#SBATCH --ntasks=8                  # Number of tasks (cores)
+#SBATCH --time=12:00:00                # Time limit
+#SBATCH --output=frame_sampling_1.log  # Output file
+
+module load miniconda3/latest
+eval "$(conda shell.bash hook)"
+conda activate sarah_env
+
+echo "Starting job on $(date)"
+echo "Running on node $(hostname)"
+echo "Python executable: $(which python)"
+echo "Python version: $(python --version)"
+echo "CUDA devices:"
+nvidia-smi
+
+# home directory
+cd /home/fs72607/juarezs98/Bowerbird-ID/3_Frame_sampling
+# Run frame sampling script
+python /home/fs72607/juarezs98/Bowerbird-ID/3_Frame_sampling/Frame_sampling.py
+
+echo "Job finished on $(date)"
