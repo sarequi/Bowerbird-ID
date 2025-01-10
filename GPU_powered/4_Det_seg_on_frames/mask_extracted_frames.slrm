@@ -1,0 +1,29 @@
+#!/bin/bash
+#
+#SBATCH -J mask_extracted_frames      # Job name
+#SBATCH --partition=zen2_0256_a40x2     # GPU-enabled partition
+#SBATCH --qos=zen2_0256_a40x2           # Quality of Service for the partition
+#SBATCH --gres=gpu:1                    # Request 1 GPU (half-node)
+#SBATCH --ntasks=8                      # Number of tasks (cores)
+#SBATCH --time=6:00:00                 # Time limit
+#SBATCH --output=masked_frame_processing.log  # Output file
+
+module load miniconda3/latest
+
+eval "$(conda shell.bash hook)"
+
+conda activate sarah_env
+
+# Logging environment details
+echo "Starting job on $(date)"
+echo "Running on node $(hostname)"
+echo "Python executable: $(which python)"
+echo "Python version: $(python --version)"
+echo "CUDA devices:"
+nvidia-smi
+
+cd /home/fs72607/juarezs98/Bowerbird-ID/4_Run_YOLOv11_det_seg
+
+python /home/fs72607/juarezs98/Bowerbird-ID/4_Run_YOLOv11_det_seg/mask_extracted_frames.py
+
+echo "Job finished on $(date)"
