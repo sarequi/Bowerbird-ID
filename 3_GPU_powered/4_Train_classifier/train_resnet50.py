@@ -23,7 +23,7 @@ MEAN = [0.485, 0.456, 0.406]
 STD = [0.229, 0.224, 0.225]
 NUM_CLASSES = 16
 USE_PRETRAINED = True
-NUM_EPOCHS = 300
+NUM_EPOCHS = 20
 LEARNING_RATE = 0.001
 MOMENTUM = 0.9
 STEP_SIZE = 7
@@ -47,18 +47,18 @@ data_transforms = {
 }
 
 # Load dataset
-datasets = {
+datasets_ = {
     phase: datasets.ImageFolder(os.path.join(DATA_DIR, phase), transform=data_transforms[phase])
     for phase in ['train', 'val']
 }
 
 dataloaders = {
-    phase: DataLoader(datasets[phase], batch_size=BATCH_SIZE, shuffle=(phase == 'train'), num_workers=NUM_WORKERS)
+    phase: DataLoader(datasets_[phase], batch_size=BATCH_SIZE, shuffle=(phase == 'train'), num_workers=NUM_WORKERS)
     for phase in ['train', 'val']
 }
 
-dataset_sizes = {phase: len(datasets[phase]) for phase in ['train', 'val']}
-class_names = datasets['train'].classes
+dataset_sizes = {phase: len(datasets_[phase]) for phase in ['train', 'val']}
+class_names = datasets_['train'].classes
 
 print(f"Classes: {class_names}")
 print(f"Training samples: {dataset_sizes['train']}, Validation samples: {dataset_sizes['val']}")
@@ -125,10 +125,10 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=NUM_EPOCHS):
 
             print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
+            # Track validation metrics and save best model
             if phase == 'val':
                 val_losses.append(epoch_loss)
                 val_accuracies.append(epoch_acc.item())
-
                 if epoch_acc > best_acc:
                     best_acc = epoch_acc
                     best_model_wts = model.state_dict()
@@ -139,8 +139,10 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=NUM_EPOCHS):
     print(f'Best val Acc: {best_acc:.4f}')
     print(f'Best model saved at: {model_save_path}')
 
+    # Load best model weights
     model.load_state_dict(best_model_wts)
 
+    # Plot validation loss and accuracy over epochs
     epochs = range(1, num_epochs + 1)
     plt.figure(figsize=(10, 5))
 
@@ -158,8 +160,12 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=NUM_EPOCHS):
     plt.title("Validation Accuracy Over Epochs")
     plt.legend()
 
+    # Save the training curves to the current directory
+    training_plot_path = os.path.join(os.getcwd(), "validation_curves.png")
     plt.tight_layout()
-    plt.show()
+    plt.savefig(training_plot_path)
+    # (You could keep plt.show() if running interactively, but it's not necessary on a cluster)
+    # plt.show()
 
     return model
 
@@ -186,10 +192,19 @@ with torch.no_grad():
 print("Classification report:")
 print(classification_report(all_labels, all_preds, target_names=class_names))
 
+# Confusion matrix
 cm = confusion_matrix(all_labels, all_preds)
 plt.figure(figsize=(10, 8))
-sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=class_names, yticklabels=class_names)
+sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", 
+            xticklabels=class_names, yticklabels=class_names)
 plt.xlabel("Predictions")
 plt.ylabel("Ground truth")
 plt.title("Confusion matrix")
-plt.show()
+
+# Save confusion matrix figure in the current working directory
+cm_figure_path = os.path.join(os.getcwd(), "confusion_matrix.png")
+plt.savefig(cm_figure_path)
+
+# Again, plt.show() won't display in a headless SLURM environment;
+# it's optional if you run locally with a display.
+# plt.show()
