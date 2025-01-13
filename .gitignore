@@ -161,7 +161,8 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 .DS_Store
-*.png
+3_CPU_powered/**/*.png
+3_GPU_powered/**/*.png
 *.mp4
 *.pt
 *.pth
