@@ -1,0 +1,51 @@
+#!/bin/bash
+#
+#SBATCH -J train_resnet          # Job name
+#SBATCH --partition=zen2_0256_a40x2 # GPU-enabled partition
+#SBATCH --qos=zen2_0256_a40x2       # Quality of Service for the partition
+#SBATCH --gres=gpu:1               # Request 1 GPU
+#SBATCH --ntasks=8                 # Number of tasks (cores)
+#SBATCH --time=20:00:00             # Time limit (1 hour)
+#SBATCH --output=train_resnet.log # Output file
+
+# Debugging: Print when the script starts
+echo "Script started at $(date)"
+
+module load miniconda3/latest
+echo "Miniconda loaded"
+
+eval "$(conda shell.bash hook)"
+echo "Conda shell initialized"
+
+conda activate sarah_env
+echo "Activated conda environment: sarah_env"
+
+# Logging environment details
+echo "Starting job on $(date)"
+echo "Running on node $(hostname)"
+echo "Python executable: $(which python)"
+echo "Python version: $(python --version)"
+echo "CUDA devices:"
+nvidia-smi
+
+# Check if nvidia-smi worked and CUDA devices are available
+if [ $? -eq 0 ]; then
+    echo "nvidia-smi executed successfully"
+else
+    echo "Error: nvidia-smi failed to run"
+    exit 1
+fi
+
+cd /home/fs72607/juarezs98/Bowerbird-ID/6_Train_ResNet50
+echo "Changed directory to $(pwd)"
+
+# Check if the python script exists before running it
+if [ -f /home/fs72607/juarezs98/Bowerbird-ID/6_Train_ResNet50/train_resnet50.py ]; then
+    echo "Found train_resnet50.py, proceeding to execute"
+    python /home/fs72607/juarezs98/Bowerbird-ID/6_Train_ResNet50/train_resnet50.py
+else
+    echo "Error: train_resnet50.py not found"
+    exit 1
+fi
+
+echo "Job finished at $(date)"

@@ -1,0 +1,29 @@
+#!/bin/bash
+#
+#SBATCH -J classify_bird_id          # Job name
+#SBATCH --partition=zen2_0256_a40x2 # GPU-enabled partition
+#SBATCH --qos=zen2_0256_a40x2       # Quality of Service for the partition
+#SBATCH --gres=gpu:1   
+#SBATCH --ntasks=8                  # Number of tasks (cores)
+#SBATCH --time=0:20:00              # Time limit (1 hours)
+#SBATCH --output=classify_bird_id.log  # Output file
+
+module load miniconda3/latest
+
+eval "$(conda shell.bash hook)"
+
+conda activate sarah_env
+
+# Logging environment details
+echo "Starting job on $(date)"
+echo "Running on node $(hostname)"
+echo "Python executable: $(which python)"
+echo "Python version: $(python --version)"
+echo "CUDA devices:"
+nvidia-smi
+
+cd /home/fs72607/juarezs98/Bowerbird-ID/7_Classify_bowerdbird_ID
+
+python /home/fs72607/juarezs98/Bowerbird-ID/7_Classify_bowerdbird_ID/Classify_bird_ID.py
+
+echo "Job finished on $(date)"
