@@ -6,7 +6,7 @@ Since 2018, the Fusani Lab's team has been filming a population of spotted bower
 
 Several birds were already identified with uniquely coloured leg bands. However, identifying the birds on video through the leg bands is time-consuming and can be cumbersome due to physical occlusions. Furthermore, a significant number of birds, predominantly females, remain unbanded, making it difficult to track their behaviour and interactions over time. Automated identification of individual birds would ease the research of their behaviour. 
 
-The project aims to automate the identification of individual bowerbirds using machine learning. A ResNet-type algorithm was trained to classify 16 birds on a rich dataset of video frames from 2018, and achieved a performance of 0.9877 mAP. While the scope of this project is to identify and classify birds only within the 16 classes, this model could ultimately be able to create new categories for unbanded birds.
+The project aims to automate the identification of individual bowerbirds using machine learning. A ResNet-type algorithm was trained to classify 16 birds on a rich dataset of video frames from 2018 and achieved a performance of 0.9877 mAP. While this project's scope is to identify and classify birds only within the 16 classes, this model could ultimately create new categories for unbanded birds.
 
 This documentation covers: 
 * Required environment and dependencies
@@ -51,23 +51,16 @@ To reduce the variation across extracted frames, video sampling was done conside
 
 Frames are opened and extracted from the validated videos through OpenCV. The script iterates through the videos, sampling frames at a fixed interval. After it is done extracting frames from a video, it limiting extractions to a maximum of ten frames per video. The extracted frames are written into an output directory, logging the bird ID, video name, and timestamp into a metadata file (`extracted_frames_metadata.csv`). 
 
-Then, Ultralytics' YOLOv11 (`yolo11m-seg.pt`) was used to filter out frames that do not feature a bird. To minimize redundant data, **PIL’s `imagehash`** was used to filter out near-duplicate frames, with a similarity threshold of ____. 
-
 ### Frame processing
 
 Objectives
- Standardising the images by ensuring birds are the same size regardless of their position in the scene, e.g. to avoid birds positioned further away from the camera from appearing smaller. It is also meant to reduce the presence of noise and artifacts present in the background. The aim of pre processing is to enhance the relevant features of the brids to ease model training and improve classification.
+ Standardising the images by ensuring birds are the same size regardless of their position in the scene, e.g., to prevent birds positioned further away from the camera from appearing smaller. It is also meant to reduce the presence of noise and artefacts present in the background. Pre-processing aims to enhance the relevant features of the birds to ease model training and improve the classification.
 
-Leg bands were removed from the scene as they may have interfered with feature learning.
+1. Filtering out frames with no birds in them 
 
-Filtering out frames with no brids in them 
+2. Birds changing position in the scene: 
 
-Birds changing position in the scene: 
-
-Flow chart of frame pre processing pipeline:
-
-## Object detection
-Mask R-CNN setup and configuration - Steps for training or fine-tuning the model - Addressing performance issues with manual annotations 
+3. Removing leg bands, as they may have interfered with feature learning.
 
 ## 4. Model training and evaluation
 
