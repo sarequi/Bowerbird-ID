@@ -1,4 +1,3 @@
-# Import required libraries
 import os
 import time
 import torch
@@ -10,11 +9,9 @@ from torch.optim import lr_scheduler
 import torch.optim as optim
 from sklearn.metrics import classification_report, confusion_matrix
 
-# Detect GPU
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
-# Constants
 IMAGE_SIZE = 512
 HORIZONTAL_FLIP_PROB = 0.5
 BATCH_SIZE = 32
@@ -69,7 +66,7 @@ num_ftrs = model.fc.in_features
 model.fc = torch.nn.Linear(num_ftrs, NUM_CLASSES)
 model = model.to(device)
 
-# Loss function and optimizer
+# Loss function and optimiser
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, momentum=MOMENTUM)
 scheduler = lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
@@ -164,7 +161,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=NUM_EPOCHS):
     training_plot_path = os.path.join(os.getcwd(), "validation_curves.png")
     plt.tight_layout()
     plt.savefig(training_plot_path)
-    # (You could keep plt.show() if running interactively, but it's not necessary on a cluster)
+    # (You could keep plt.show() if running in Jup Notebook (interactively)
     # plt.show()
 
     return model
@@ -201,10 +198,10 @@ plt.xlabel("Predictions")
 plt.ylabel("Ground truth")
 plt.title("Confusion matrix")
 
-# Save confusion matrix figure in the current working directory
+# Save confusion matrix in the current working directory
 cm_figure_path = os.path.join(os.getcwd(), "confusion_matrix.png")
 plt.savefig(cm_figure_path)
 
-# Again, plt.show() won't display in a headless SLURM environment;
-# it's optional if you run locally with a display.
+# plt.show() won't display in a headless SLURM environment;
+# it's optional if run locally with a display.
 # plt.show()
