@@ -1,45 +1,47 @@
-# Bowerbird Individual Identification  
+# Bowerbird Individual Identification 🪶  
 
-## 1. Introduction 
+## 1. Intro 📚
 
-Since 2018, the Fusani Lab's team has been filming a population of spotted bowerbirds in Australia. The videos were captured in the wild using motion-triggered camera traps placed in front of the bowers, which are structures male bowerbirds build to attract mates. 
+Since 2018, the Fusani Lab has been filming a population of spotted bowerbirds in Australia. The videos were captured using motion-triggered camera traps placed in front of the bowers, which are structures male bowerbirds build to attract mates. 
 
-Several birds were already identified with uniquely coloured leg bands. However, identifying the birds on video through the leg bands is time-consuming and can be cumbersome due to physical occlusions. Furthermore, a significant number of birds, predominantly females, remain unbanded, making it difficult to track their behaviour and interactions over time. Automated identification of individual birds would ease the research of their behaviour. 
+Several birds were already identified with uniquely coloured leg bands. However, manual identification of the banded birds is time-consuming and not always possible due to physical occlusions. Furthermore, a significant number of birds, predominantly females, remain unbanded, making it difficult to track their behaviour and interactions over time. Automated identification of individual birds would ease the research of their behaviour. 
 
-The project aims to automate the identification of individual bowerbirds using machine learning. A ResNet-type algorithm was trained to classify 16 birds on a rich dataset of video frames from 2018, and achieved a performance of 0.9877 mAP. While the scope of this project is to identify and classify birds only within the 16 classes, this model could ultimately be able to create new categories for unbanded birds.
+This project aimed to automate the identification of individual bowerbirds using machine learning. A ResNet-type algorithm was trained to classify 16 birds on a rich dataset of video frames from 2018, and achieved a performance of 0.9877 mAP (Mean Average Precision). While the scope of this project is to identify and classify birds only within the 16 classes, this model could ultimately be able to create new categories for unbanded birds.
 
 This documentation covers: 
 * Required environment and dependencies
 * Computational resources, with emphasis on accessing the Vienna Scientific Cluster for GPU-powered processing 
-* Step-by-step data pre-processing 
+* Data pre-processing 
 * Model training and validation + How to use the final model
 * Lessons learned
 
 ## 2. Prerequisites
 
-### Software requirements
+### Software  👾
 
-A requirements.txt file is provided, listing compatible versions of all necessary libraries and packages.
-
-The recommended approach would be to create a dedicated virtual environment, e.g. using conda, to avoid conflicts with other Python projects, and install dependencies directly from the requirements.txt file.
+A simple approach is to create a dedicated virtual environment, e.g. using conda, to avoid conflicts with other Python projects, and install dependencies directly from the requirements.txt file, which lists the compatible versions of all necessary libraries and packages.
 
 ```
 conda create -n env_name python=version 
 conda activate env_name
-pip install -r requirements.txt
+pip install -r lists compatible versions of all necessary libraries and packages.txt
 ```
-A yaml file is also provided.
+Another approach is to directly install the environment. For that, a YAML file is also provided.
 ```
 conda env create -f bowerbird_id_env.yml --name your_custom_env_name
 ```
 
-### Hardware requirements 
+### Hardware ⚙️
  
-During the initial stages of development, the functionality of the scripts for video frame extraction and preprocessing was tested on a sample of the dataset (with up to 50 instances per bird) on CPU-only machines. This approach validated the data processing pipeline without requiring substantial computing power. Once validated, the project was scaled up to the full 2018 dataset, using computational power from to the Vienna Scientific Cluster (VSC).
+* CPU-powered
 
-Both pipelines (CPU- and GPU-based) are provided on the project's GitHub repository. Detailed information on how to navigate the VSC is included in the supplementary material. For CPU-processing, the scripts are provided as notebook files, as these are more interactive. Meanwhile, the files requried for GPU-processing are provided as Python files, and with a matching SLURM file, as they needed to be ran through scheduled jobs at the VSC.
+During the initial stages of development, the functionality of the scripts was tested on a sample of the data (with up to 50 instances per bird) on a CPU-only machine. These scripts are provided as Jupyter notebook files, as these are more interactive and allowed for testing and results visualisation, and work on limited computational power. 
 
-## 3. Data pre-processing
+* GPU-powered
+
+After validation, the scripts were adapted to process the full dataset from 2018, using the computational power from to the Vienna Scientific Cluster (VSC). Detailed information on how to navigate the VSC is included in the supplementary material. The scripts are provided as Python files, with a matching SLURM file, which is only necessary when running them through scheduled jobs at the VSC.
+
+## 3. Data pre-processing 🎞️
 
 ### Video sampling
 
@@ -49,35 +51,27 @@ To reduce the variation across extracted frames, video sampling was done conside
 
 ### Frame sampling
 
-Frames are opened and extracted from the validated videos through OpenCV. The script iterates through the videos, sampling frames at a fixed interval. After it is done extracting frames from a video, it limiting extractions to a maximum of ten frames per video. The extracted frames are written into an output directory, logging the bird ID, video name, and timestamp into a metadata file (`extracted_frames_metadata.csv`). 
+Frames are opened and extracted from the validated videos through OpenCV. The script first randomly selects a percentage of the videos (currrently 10%) that should be kept for testing, from which frames should not be extracted. Afterwards, it iterates through the remaining videos, sampling frames at a fixed interval (currently 240 frames or 4 seconds). After it is done extracting all possible frames from a video, it limits the extractions to a maximum of 10 frames per video, which is enforced using the image similarity index, and by removing frames where no bird is visible. The extracted frames are written into an output directory, logging the bird ID, video name, and timestamp into a metadata file (`extracted_frames_metadata.csv`). 
 
 Then, Ultralytics' YOLOv11 (`yolo11m-seg.pt`) was used to filter out frames that do not feature a bird. To minimize redundant data, **PIL’s `imagehash`** was used to filter out near-duplicate frames, with a similarity threshold of ____. 
 
 ### Frame processing
 
-Objectives
- Standardising the images by ensuring birds are the same size regardless of their position in the scene, e.g. to avoid birds positioned further away from the camera from appearing smaller. It is also meant to reduce the presence of noise and artifacts present in the background. The aim of pre processing is to enhance the relevant features of the brids to ease model training and improve classification.
+* Object detection: Frames without birds are filtered out first through YOLOv11 detection model, by skipping frames from which no bounding boxes were detected. If there was a detection, YOLOv11 segmentation model generates a mask of the bird on the detected bounding box. The mask is  then processed using connected component analysis, which groups neighboring pixels into distinct regions. Each region should represent a separate detected object. However, sometimes, due to lower quality detections, parts of an object are detected and masked separately. To reduce these lower quality detections, the script skips regions made out of too few pixels (currently MIN_BLOB_PIXELS = 5000). If after this filtering no region remains, the frame is skipped. This ensures that only frames with clear, identifiable birds are kept. 
 
-Leg bands were removed from the scene as they may have interfered with feature learning.
+* Cropping of the bird in the image: It happens immediately after the first YOLO detection step, by cropping the frame to keep only the area within the highest-confidence bounding box. This was done to ensure that the birds were uniformly sized in the training data regardless of their position in the scene, e.g. to avoid birds positioned further away from the camera from appearing smaller, and to prevent the model from picking up on the birds' size as a feature for classification. 
 
-Filtering out frames with no brids in them 
+* Bird masking: It aimed to separate the bird from the background to eliminate noise and artifacts present in the background, thus enhancing the relevant birds' features.
 
-Birds changing position in the scene: 
+* Removing leg bands: Leg bands were removed to avoid them being identified as features for classification by the classifier. To remove them, narrow structure filtering was applied, iterating through each pixel row of the frame checking for masked (visible) structures under a certain width (currently set to ≤ 100 pixels). The pixels belonging to these narrow segments are turned black to remove them from the mask. This filtering was only performed in the lower portion of the mask, where legs are expected to be (currently set to the lower 1/3 of the frame).
 
-Flow chart of frame pre processing pipeline:
+## 4. Training and evaluating the classifier model 💪🏼
 
-## Object detection
-Mask R-CNN setup and configuration - Steps for training or fine-tuning the model - Addressing performance issues with manual annotations 
-
-## 4. Model training and evaluation
-
-CNN architecture and design
-Training process and hyperparameter tuning
-Techniques for improving classification accuracy 
-Metrics used for model evaluation
+Model architecture
+Hyperparameters 
+Evaluation metrics
 
 ## 5. Automated classification
-
 
 
 ## 6. Results and discussion
@@ -115,18 +109,13 @@ where:
 
 ![Confusion matrix](.assets/confusion_matrix.png)
 
-Key findings 
-Challenges encountered and solutions implemented
-Potential improvements and future work 
+### Challenges encountered and solutions implemented
+
+### Potential improvements and future work:
 * Birds appear in various poses. A method for normalising posture could be to train a pose estimation model, e.g. through key point detection, to filter frames based on the bird'S position, e.g. keeping only frames wwere the brids' back is visible.
-* Leg band removal: Colour segmentation could be implemented either alone or as a separate step to detect coloured bands. This approach was attempted but given upon on due to the orange tones present in the background and as part of the birds' body.  A more thorough approach, not so focused on orange tones, may work better, perhaps by converting the frames to different colour spaces first and then applying colour segmentation.
+* Leg band removal: Birds' legs are not always positioned vertically in the image. Thus, narrow structure filtering was not always successful and there are instances were leg bands are still visible. Colour segmentation could be implemented either alone or as a separate step to detect coloured bands. This approach was attempted but discarded due to the orange tones present in the background and as part of the birds' body.  A more thorough approach, not so focused on orange tones, may work better, perhaps by converting the frames to different colour spaces first and then applying colour segmentation.
 
-## 7. Reproducibility
-Structure and usage of `.yaml`
- Python files 
-Organization of training and test datasets 
-
-## 8. Supplementary material
+## 7. Supplementary material
 
 ### Working on the VSC
 
