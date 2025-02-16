@@ -3,8 +3,8 @@ from sklearn.model_selection import train_test_split
 import shutil
 
 source_dir = "/gpfs/data/fs72607/juarezs98/masked_frames/"
-train_dir = "/gpfs/data/fs72607/juarezs98/train_val_data/Training"
-val_dir = "/gpfs/data/fs72607/juarezs98/train_val_data/Validation"
+train_dir = "/gpfs/data/fs72607/juarezs98/train_val_data/train" # this folder's name should NOT be changed
+val_dir = "/gpfs/data/fs72607/juarezs98/train_val_data/val" # this folder's name should NOT be changed
 log_file = "processed_bird_ids.log"
 
 os.makedirs(train_dir, exist_ok=True)
