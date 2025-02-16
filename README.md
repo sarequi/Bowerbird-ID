@@ -1,6 +1,6 @@
 # Bowerbird Individual Identification 🪶  
 
-## 1. Intro 📚
+## Introduction 📚
 
 Since 2018, the Fusani Lab has been filming a population of spotted bowerbirds in Australia. The videos were captured using motion-triggered camera traps placed in front of the bowers, which are structures male bowerbirds build to attract mates. 
 
@@ -15,7 +15,7 @@ This documentation covers:
 * Model training and validation + How to use the final model
 * Lessons learned
 
-## 2. Prerequisites
+## Prerequisites
 
 ### Software  👾
 
@@ -35,25 +35,43 @@ conda env create -f bowerbird_id_env.yml --name your_custom_env_name
  
 * CPU-powered
 
-During the initial stages of development, the functionality of the scripts was tested on a sample of the data (with up to 50 instances per bird) on a CPU-only machine. These scripts are provided as Jupyter Notebook files, as these are more interactive, allow for testing and visualising results, and work on limited computational power. 
+During the initial stages of development, the functionality of the scripts was tested on a sample of the data (with up to 50 instances per bird) on a CPU-only machine. 
 
 * GPU-powered
 
-After validation, the scripts were adapted to process the full dataset from 2018 using the computational resources from the Vienna Scientific Cluster (VSC). Detailed information on how to navigate the VSC is included in the supplementary material. The scripts are provided as Python files, each paired with a matching SLURM file, which is only necessary when running them through scheduled jobs at the VSC.
+After validation, the scripts were adapted to process the full dataset from 2018, using the computational power from to the Vienna Scientific Cluster (VSC). Detailed information on how to navigate the VSC is included in the supplementary material. 
 
-## 3. Data pre-processing 🎞️
+## Data pre-processing 🎞️
 
-### Video sampling
+Each script in the featured directory corresponds to a step in the data preprocessing pipeline. Steps 1 and 2 can be run on a CPU. However, in step 3, for CPU-powered processing, scripts are provided as Jupyter Notebook files, which allow for results visualisation during testing. For GPU-powered processing, the scripts are provided as Python files with a matching SLURM file, which is only necessary when running the scritps through scheduled jobs at the VSC. For both approaches, model weights are included as .pth files when pre-trained models are required to run the scripts. 
 
-In the reference study, pictures were captured as the birds sat on a perch, triggered by an RFID identifier attached to each bird. This ensured relatively controlled shots, as the birds were always at a standardised distance from the camera and in a relatively uniform posture. In contrast, we extracted frames from continuous video footage fro a motion-triggered camera. Firstly, this meant that there could be videos featuring multiple birds, or no birds at all and that the birds could be captured in a variety of postures, at varying distances from the camera, and performing multiple behaviours, including copulation events. 
+### Directory Structure
 
-Video sampling was done to reduce the variation across extracted frames, considering behavioural and contextual criteria obtained from a scoring spreadsheet (`2018.xlsx`). Filtering was applied to ensure that the extracted videos contained only one bird and that the bird was the bower's owner. The names of videos that met this criteria were saved in a dictionary as a JSON file (`valid_videos.json`), listing each bird ID along with a corresponding array of video IDs.
+- **`1_Video_filtering/`** →  Logic for filtering out videos from the whole dataset 
+- **`2_Video_sampling/`** → Video extraction based on filtering criteria
+- **`3_CPU_powered/`** → Interactive data processing for testing (does not require a GPU)
+- **`3_GPU_powered/`** → Python files with SLURM job scheduling for processing the full dataset (requires a GPU)  
+- **`4_Minimal_training_data/`** → Testing the minimal data needed for classifier training 
 
-### Frame sampling
+### 1. Video filtering 
+
+The script analyses a yearly scoring spreadsheet (currently 2018.xlsx). It outputs the number and IDs of bird individuals identified that year and the "valid videos" count for each bird based on the following inclusion criteria:
+
+* Based on the “Owner” column: Counts “1” (owner of the bower visible), “2” (owner doing bower maintenance); “3” (owner displaying courtship which it can do while alone), or “4” (bird doing maintenance and display). 
+* Based on the “Others” column: Counts only “0” (there are no other birds or they are not visible)
+* Based on the “Copulation” column: Counts only “0” (no copulation, although this could be inferred if "Others" is "0")
+
+### 2. Video sampling
+
+The reference study captured pictures as the birds sat on a perch, triggered by an RFID identifier attached to each bird. This ensured relatively controlled shots, as the birds were always at a standardised distance from the camera and in a relatively uniform posture. In contrast, we extracted frames from continuous video footage from a motion-triggered camera. This meant that the videos could feature multiple birds or no birds at all, and birds in various postures, performing various behaviours, and at varying distances from the camera. 
+
+To reduce the variation across extracted frames, video sampling was done considering behavioural and contextual criteria from a scoring spreadsheet (`2018.xlsx`). Filtering was applied to ensure that the extracted videos contained only one bird, the owner of the bower. The names of videos that met this criteria were saved in a dictionary as a JSON file (`valid_videos.json`), listing each bird ID along with a corresponding array of video IDs.
+
+### 3.1. Frame sampling
 
 Frames are opened and extracted from the validated videos through OpenCV. The script randomly selects a percentage of the videos (currently 10%) that should be kept for testing, from which frames should not be extracted. Afterwards, it iterates through the remaining videos, sampling frames at a fixed interval (currently 240 frames, the equivalent of 4 seconds). After extracting all possible frames from a video, the extractions are limited to 10 frames per video, using the image similarity index and removing frames where no bird is visible, through a pre-trained YOLOv11 detection model. The extracted frames are written into an output directory, logging the bird ID, video name, and timestamp into a metadata file (`extracted_frames_metadata.csv`). 
 
-### Frame processing
+### 3.2. Frame processing (Object detection and mask segmentation)
 
 * Object detection: Frames without birds are filtered out first through the same pre-trained YOLOv11 detection model by skipping frames from which no bounding boxes were detected. If there was a detection, the YOLOv11 segmentation model generates a mask of the bird on the detected bounding box. The mask is then processed using connected component analysis, which groups neighbouring pixels into distinct regions. Each region should represent a separate detected object. However, sometimes, due to lower-quality detections, parts of an object are detected and masked separately. To reduce these lower-quality detections, the script skips regions of too few pixels (currently MIN_BLOB_PIXELS = 5000). If, after this filtering, no region remains, the frame is skipped. This ensures that only frames with clear, identifiable birds are kept. 
 
@@ -63,16 +81,39 @@ Frames are opened and extracted from the validated videos through OpenCV. The sc
 
 * Removing leg bands: Leg bands were removed to prevent them from being identified as features for classification by the classifier. To remove them, narrow structure filtering was applied, iterating through each pixel row of the frame checking for masked (visible) structures under a certain width (currently set to ≤ 100 pixels). The pixels of these narrow segments are turned black to remove them from the mask. This filtering was only performed in the lower portion of the mask, where legs are expected to be (currently set to the lower 1/3 of the frame).
 
-## 4. Training and evaluating the classifier model 💪🏼
+### 3.3. Training-validation data split
+
+This script splits masked bird images into training and validation sets (currently test_size=0.3, therefore there is a 70-30 train-val split). The results of the split are logged in processed_bird_ids.log.
+
+## 3.4. Training and evaluating the classifier model 💪🏼
 
 Model architecture
 Hyperparameters 
 Evaluation metrics
 
-## 5. Automated classification
+## 3.5. Running automated classification
 
+## 3.6. Incremental class learning
 
-## 6. Results and discussion
+## 4. Minimal training data
+
+## 4.1. Subset creation and data split
+
+Creates several training subsets with incremental amounts of data (currenty 50, 100, 150, 200, 250, 300, 350, 400, and 450 instances). There is a random shuffing prior to the selection og images for each subset. In each dataset, there is the same amount of instances per bird, i.e. the trainign + validation sets are now uniform across classes, which was enforced when training with the whole dataset.
+
+Each subset is then split into training (70%), validation (20%), and testing (10%) subsets.
+
+## 4.2. Training the classifier on multiple subsets
+
+Trains a classifier on each subset generated by Split_data.py to evaluate how training performance changes with dataset size and to eventually identify the minimal amount necessary to rain the classifier with an mAP >0.85.
+
+The script separately logs training metrics (loss, accuracy) per epoch, and saves trained models and performance results of eacg subset.
+
+## 4.3. Plotting training progress
+
+This step aiims to visualise the relationship between dataset size and training performance by plotting validation accuracy and loss across dataset size and across epochs. It uses dashed lines for loss and solid lines for accuracy.
+
+## 5. Results 
 
 The best model's accuracy was **0.9877**
 
@@ -107,13 +148,13 @@ Where:
 
 ![Confusion matrix](.assets/confusion_matrix.png)
 
-### Challenges encountered and solutions implemented
+### 6. Challenges encountered and solutions implemented
 
-### Potential improvements and future work:
+### 7. Potential improvements and future work:
 * Standardising bird posture: In our current dataset, birds appear in various poses. An approach could be to train a pose estimation model, e.g. through key point detection, to filter frames based on the bird's position, e.g. keeping only frames were the bird's back is visible.
 * Leg band removal: Birds' legs are not always positioned vertically in the image. Thus, narrow structure filtering was not always successful, and there are instances where leg bands are still visible. Colour segmentation could be implemented alone or as a separate step to detect coloured bands. This approach was attempted but discarded due to the orange tones present in the background and as part of the bird's body.  A more thorough approach, not so focused on orange tones, may work better, e.g. converting the frames to different colour spaces first and then applying colour segmentation.
 
-## 7. Supplementary material
+## 8. Supplementary material
 
 ### Working on the VSC
 
