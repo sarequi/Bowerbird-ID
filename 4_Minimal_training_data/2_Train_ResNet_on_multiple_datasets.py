@@ -44,7 +44,6 @@ def train_single_subset(subset_size, data_base_dir, output_base_dir, num_epochs=
         ]),
     }
 
-    # Load dataset
     datasets_ = {phase: datasets.ImageFolder(os.path.join(DATA_DIR, phase), transform=data_transforms[phase]) for phase in ['train', 'val']}
     dataloaders = {phase: DataLoader(datasets_[phase], batch_size=batch_size, shuffle=(phase == 'train'), num_workers=8) for phase in ['train', 'val']}
     dataset_sizes = {phase: len(datasets_[phase]) for phase in ['train', 'val']}
@@ -53,7 +52,7 @@ def train_single_subset(subset_size, data_base_dir, output_base_dir, num_epochs=
     print(f"Classes: {class_names}")
     print(f"Training samples: {dataset_sizes['train']}, Validation samples: {dataset_sizes['val']}")
 
-    # Load pre-trained ResNet50
+    # Load pre-trained classifier
     model = models.resnet50(pretrained=True)
     num_ftrs = model.fc.in_features
     model.fc = torch.nn.Linear(num_ftrs, len(class_names))
@@ -111,7 +110,7 @@ def train_single_subset(subset_size, data_base_dir, output_base_dir, num_epochs=
     model.load_state_dict(best_model_wts)
     torch.save(best_model_wts, model_save_path)
 
-    # Evaluate model on validation set
+    # Evaluate model 
     all_preds, all_labels = [], []
     model.eval()
     with torch.no_grad():
@@ -140,10 +139,9 @@ def train_single_subset(subset_size, data_base_dir, output_base_dir, num_epochs=
 
     return subset_size, val_losses, val_accuracies
 
-
 def main():
-    subset_sizes = [50, 100, 150, 200, 250, 300, 350, 400, 450]
-    data_base_dir = "/gpfs/data/fs72607/juarezs98/subsets_finetune/Data/"
+    subset_sizes = [50, 100, 150, 200, 250, 300, 350, 400, 450, 500]  # This can be adjusted as needed
+    data_base_dir = "/gpfs/data/fs72607/juarezs98/subsets_finetune/"
     output_base_dir = "/gpfs/data/fs72607/juarezs98/subsets_finetune/Outputs_finetune/"
 
     num_epochs = 10
@@ -170,13 +168,6 @@ def main():
             'val_losses': val_losses,
             'val_accuracies': val_accuracies
         }
-
-    # Save results to CSV
-    results_df = pd.DataFrame.from_dict(training_results, orient='index')
-    results_csv_path = os.path.join(output_base_dir, "training_results.csv")
-    results_df.to_csv(results_csv_path, index=True)
-
-    print(f"Training results saved to {results_csv_path}")
 
 if __name__ == "__main__":
     main()
