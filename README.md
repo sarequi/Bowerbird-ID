@@ -93,7 +93,14 @@ Evaluation metrics
 
 ## 3.5. Running automated classification
 
-## 3.6. Incremental class learning
+The script determines the most likely bird ID by following these steps:
+
+1️⃣ Counting how many times each class is predicted for each frame in a subfolder. If no subfolder is provided but simply frames showing the same bird, all frames are processed as one.
+
+2️⃣ Computing a list of probabilities (confidence scores) assigned to the predicted classes, and summing the confidence scores only for the most common class. The sum is divided by most_common_count to get the average confidence. This provides inforamtion about how sure the model is about its most frequent prediction.
+
+3️⃣ Printing the top 3 most frequently predicted classes and how many frames they were predicted for.
+This gives information about whether other birds appear similarly frequently and whether there’s classification uncertainty.
 
 ## 4. Minimal training data
 
