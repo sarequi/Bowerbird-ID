@@ -122,7 +122,7 @@ This step aiims to visualise the relationship between dataset size and training 
 
 ## 5. Results 
 
-The best model's accuracy was **0.9877**
+The classifier achieved a mean F1-score of 0.9877 across the 16 identified bird classes. Birds with fewer training instances (e.g., B18 and B26) showed slightly lower scores (~0.97). 
 
 Classification report
 
