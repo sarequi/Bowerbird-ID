@@ -1,7 +1,6 @@
-# This scripts periodically extracts frames from the original videos,
-# filters out those frames that do not feature a bird in them through YOLO
-# detection, and reserves X% of the extracted videos for testing -
-# Meaning, it does not extract frames from the testing videos
+# This script periodically extracts frames from videos, reserving a percentage
+# of videos for testing (and skipping frame extraction from these videos).
+# Extracted frames are saved along with metadata
 
 import os
 import random
@@ -10,7 +9,6 @@ import pandas as pd
 import logging
 from pathlib import Path
 from tqdm import tqdm
-from ultralytics import YOLO
 
 INPUT_DIR = "/gpfs/data/fs72607/juarezs98/bbird_original_data/"
 FRAME_OUTPUT_DIR = "/gpfs/data/fs72607/juarezs98/extracted_frames"
@@ -18,14 +16,11 @@ os.makedirs(FRAME_OUTPUT_DIR, exist_ok=True)
 
 METADATA_FILE = os.path.join(FRAME_OUTPUT_DIR, "metadata.csv")
 TEST_METADATA_FILE = os.path.join(FRAME_OUTPUT_DIR, "test_videos.csv")
-YOLO_MODEL_PATH = "yolo11m-seg.pt"
-SAMPLING_INTERVAL = 240 # every 4 seconds
+SAMPLING_INTERVAL = 240 # every 4 seconds (26 fps videos)
 RANDOM_SEED = 42
-TEST_RATIO = 0.1  # Ratio of the videos from which frames should not be extracted - Test videos
+TEST_RATIO = 0.1  # Ratio of test videos (10% of videos are reserved for testing)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-
-model = YOLO(YOLO_MODEL_PATH).to("cuda").eval() # loads yolo
 
 if os.path.exists(METADATA_FILE): # loads metadata file or creates it
     metadata = pd.read_csv(METADATA_FILE)
