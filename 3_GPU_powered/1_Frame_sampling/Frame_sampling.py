@@ -34,12 +34,26 @@ else:
 
 all_videos = [video.name for bird in Path(INPUT_DIR).iterdir() if bird.is_dir() for video in bird.glob("*.MP4")] 
 
-if test_metadata.empty: # if test videos have not been selected, select them
-    random.seed(RANDOM_SEED)
-    test_metadata = pd.DataFrame(random.sample(all_videos, int(len(all_videos) * TEST_RATIO)), columns=["Video Name"])
-    test_metadata.to_csv(TEST_METADATA_FILE, index=False)
+if test_metadata.empty: # if test videos have not been selected, select them per bird
+    random.seed(RANDOM_SEED)
+    all_test_videos = [] 
+    for bird_folder in Path(INPUT_DIR).iterdir():
+        if bird_folder.is_dir():
+            bird_videos = [video.name for video in bird_folder.glob("*.MP4")]
+            if bird_videos: 
+                num_test_videos = max(1, int(len(bird_videos) * TEST_RATIO)) 
+                num_test_videos = min(num_test_videos, len(bird_videos)) #dont sample more videos than available
+                test_videos_for_bird = random.sample(bird_videos, num_test_videos)
+                all_test_videos.extend(test_videos_for_bird)
+    test_metadata = pd.DataFrame(all_test_videos, columns=["Video Name"])
+    test_metadata.to_csv(TEST_METADATA_FILE, index=False)
 
 test_videos = set(test_metadata["Video Name"])
+#the following snippet would extract 10% of the whole pool of videos, not of each bird's
+#if test_metadata.empty: # if test videos have not been selected, select them
+    #random.seed(RANDOM_SEED)
+    #test_metadata = pd.DataFrame(random.sample(all_videos, int(len(all_videos) * TEST_RATIO)), columns=["Video Name"])
+    #test_metadata.to_csv(TEST_METADATA_FILE, index=False)
 
 for bird_folder in tqdm([b for b in Path(INPUT_DIR).iterdir() if b.is_dir()], desc="Processing videos"):
     bird_name = bird_folder.name
