@@ -134,7 +134,7 @@ The following confusion matrices shoe the distribution of predicted classes agai
 
 The following graph shows the model performance on the validation set across increasing subset sizes. The learning curve indicates a general trend of increasing F1-score with larger subset sizes. The F1-score reached approximately 0.85 with a subset of 400 instances. Beyond this point, the F1-score continued to improve but the rate of improvement diminished until reaching a 0.944 F1-score at 1000 instances.
 
-![Model performance across increasing subset sizes](Performance across subsets.svg)
+![Model performance across increasing subset sizes](Performance_across_subsets.svg)
 
 ### 6. Challenges encountered and solutions implemented
 
