@@ -124,11 +124,17 @@ Classification report
 | B52 | 1 601 | 4 899 | 3 429 | 1 470 | 140 | 0.99 | 0.968 |
 | **Total / Mean** | **54 802** | **83 406** | **58 377** | **25 029** | **1 117** | **0.98** | **0.926** |
 
+Confusion matrices showing theprediction performance on the model on validaiton and test sets
+
+The following confusion matrices shoe the distribution of predicted classes against the ground truth. The elements across the diagonal represent correctly classified instances for each bird, and the elements outside of the diagonal correspond to misclassifications.
+
 ![Confusion matrix](confusion_matrices_bw.svg)
 
 * Minimal training data
 
-![Model performance across increasing subset sizes]([Performance across subsets.svg](https://github.com/sarequi/Bowerbird-ID/blob/a1fb56dbc0342b95109f0a37348324271563eec8/Performance%20across%20subsets.svg)
+The following graph shows the model performance on the validation set across increasing subset sizes. The learning curve indicates a general trend of increasing F1-score with larger subset sizes. The F1-score reached approximately 0.85 with a subset of 400 instances. Beyond this point, the F1-score continued to improve but the rate of improvement diminished until reaching a 0.944 F1-score at 1000 instances.
+
+![Model performance across increasing subset sizes](Performance across subsets.svg)
 
 ### 6. Challenges encountered and solutions implemented
 
