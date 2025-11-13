@@ -1,4 +1,4 @@
-name: sarah_env
+name: bbird_id_env
 channels:
   - anaconda
   - conda-forge
