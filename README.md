@@ -24,8 +24,9 @@ All data used in this study was collected by Giovanni Spezie (PhD candidate at t
 - **`1_Data_processing/`** →  Video filtering, frame sampling, detection and segmentation of the birds, data split
 - **`2_Individual_classifier/`** →  Training the individual classifier on all available data
 - **`3_Minimal_data_requirement/`** → Training the individual classifier on increasingly larger subsets of all available data (50-1000 instances)
-- **`4_Viewpoint_and_classifier_performance/`** → Training the individual classifier on viewpoint-specific datasets
-- **`5_Viewpoint_and_data_requirement/`** → Training the individual classifier on increasingly larger subsets of the viewpoint-specific datasets 
+- **`4_Viewpoint_classifier/`** → Training the viewpoint classifier
+- **`5_Viewpoint_and_individual_classification/`** → Training the individual classifier on instances of the birds across each viewpoint
+- **`6_Viewpoint_and_data_requirement/`** → Training the individual classifier on increasingly larger subsets of the viewpoint-specific datasets 
 
 ## Prerequisites
 
@@ -47,59 +48,52 @@ conda env create -f bird_id_env.yml --name env_name
 
 Our ResNet50 model was implemented in PyTorch (1.13.1) and Torchvision (0.14.1). Training was conducted on a computer partition from the Vienna Scientific Cluster, on an NVIDIA A40 GPU (NVIDIA Corporation) and 8 CPU cores from a node equipped with 256 GB of RAM, using the CUDA framework for GPU acceleration on an AlmaLinux (8.5) operating system.
 
-## Data pre-processing 🎞️
+## 1 - Data pre-processing 🎞️
 
-Model weights (.pth files) are included when pre-trained models are required. 
+The dataset was collected by Dr. Giovanni Spezie (former PhD candidate at the University of Veterinary Medicine Vienna, supervised by Prof. Leonida Fusani) in Taunton National Park (Scientific), Queensland, Australia, during the 2021 breeding season, between July and November. Data were gathered using 17 motion-triggered camera traps (Browning, Recon Force Edge) positioned to monitor active bowers owned by previously banded birds, with one camera trap per bower. 
 
-### 1. Video filtering 
+The dataset comprised 25,234 scored videos, with individual video durations ranging from 30 seconds to 2 minutes. The videos were in the MP4 format, with a resolution of 1920×1080 pixels and a frame rate of 30 frames per second (fps).
 
-Ground truth for individual identity was established through manual coding of all recorded videos. This process involved visual inspection to document whether the videos contained visible birds, whether they were banded and unbanded individuals, and to determine the identity of banded individuals. Videos were subsequently filtered from this initial scoring to include only those featuring a single owner bowerbird. 
-We excluded videos featuring multiple individuals (banded or unbanded), no birds, single unbanded individuals, individuals of different species, and single banded non-owners. 
+### 1.1. Video filtering 
 
-### 3.1. Frame sampling
+Ground truth for individual identity was obtained from the scoring of all recorded videos, performed by other researchers as part of the larger project. All recorded videos were visually inspected to document whether they contained visible birds, whether they were banded or unbanded, and to determine the identity of banded individuals. Videos were filtered to include only those featuring a single owner bowerbird. The resulting video bank consisted of 24,239 videos of 16 banded owner bowerbirds.
 
-Before frame extraction, a 10% subset of the videos from each bird was held out for testing. Afterwards, frames from the remaining videos were extracted using the OpenCV library, at a fixed interval. After extracting all possible frames, the extractions are limited to 10 frames per video, using the image similarity index and removing frames where no bird is visible, through a pre-trained YOLOv11 detection model.
+### 1.2. Frame sampling
 
-### 3.2. Frame processing
+Before extracting frames, 10% of each bird’s videos were set aside as the test set, and all frames from these videos were extracted. The remaining videos were processed with OpenCV, where frames were sampled at intervals to create the training and validation sets.
+
+### 1.3. Bird detection and segmentation
 
 A multistage image processing pipeline was applied to the extracted raw frames aiming to standardise the size and position of the bird within the frames.
 
-* Object detection: First, a pre-trained YOLOv11 (Ultralytics) model was used to detect the birds in each frame (Figure 3a). For frames in which a bird was detected, the frame was cropped to the bounding box with the highest confidence score, isolating the detected bird (Figure 3b). Frames in which no bird was detected were excluded from further analysis.
+* Bird detection: First, a pre-trained YOLOv11 (Ultralytics) model was used to detect the birds in each frame (confidence threshold = 0.8). For frames in which a bird was detected, the frame was cropped to the bounding box with the highest confidence score, isolating the detected bird (Figure 3b). Frames in which no bird was detected were excluded from further analysis.
 
-* Cropping of the bird in the image: Crops the frame to keep only the area within the highest-confidence bounding box. 
+* Bird mask sementation: Within the detected bounding box, the same YOLOv11 model was applied for mask segmentation (confidence threshold = 0.6), to generate a pixel-wise mask of each bird. Then, the mask was processed with Connected Component Analysis (CCA). To further polish the mask, we skip regions of too few pixels (currently MIN_BLOB_PIXELS = 5000). If, after this filtering, no region remains, the frame is skipped. This ensures that only frames with clear, identifiable birds are kept.
 
-* Bird masking: If there was a detection, the YOLOv11 segmentation model generates a pixel-wise mask of the bird. The mask is then processed using connected component analysis, which groups neighbouring pixels into distinct regions. Each region should represent a separate detected object. However, sometimes, due to lower-quality detections, parts of an object are detected and masked separately. To reduce these lower-quality detections, the script skips regions of too few pixels (currently MIN_BLOB_PIXELS = 5000). If, after this filtering, no region remains, the frame is skipped. This ensures that only frames with clear, identifiable birds are kept.
+* Leg removal: Each mask was processed to digitally remove the leg band to prevent the classifier from overfitting the training data. This was done by iterating through each pixel row from the lower one-third portion of the mask, i.e. the fraction of the mask expected to contain the birds' legs, to identify narrow vertical structures, i.e. with a width less than or equal to 100 pixels. Pixel rows containing such structures were entirely cropped from the image.
 
-* Removing leg bands: Leg bands were removed to prevent them from being identified as features for classification by the classifier. each mask was processed to digitally remove the leg band to prevent the classifier from overfitting the training data. This was done by iterating through each pixel row from the lower one-third portion of the mask, i.e. the fraction of the mask expected to contain the birds' legs, to identify narrow vertical structures, i.e. with a width less than or equal to 100 pixels and setting those regions to the background value (black or '0').
+### 1.4. Training-validation data split
 
-### 3.3. Training-validation data split
+The final dataset, consisting of the processed masks for each individual bird, was randomly split into training and validation subsets, with a 70:30 split (Scikit-learn library v1.3.0).
 
-This script splits masked bird images into training and validation sets (currently test_size=0.3, therefore there is a 70-30 train-val split). The results of the split are logged in processed_bird_ids.log.
+## 2 - Individual classifier 🧠
 
-## 3.4. Training and evaluating the classifier 💪🏼
-
-Our ResNet50 model was implemented in PyTorch (1.13.1) and Torchvision (0.14.1). Training was conducted on a computer partition from the Vienna Scientific Cluster, on an NVIDIA A40 GPU (NVIDIA Corporation) and 8 CPU cores from a node equipped with 256 GB of RAM, using the CUDA framework for GPU acceleration on an AlmaLinux (8.5) operating system.
-
-The model was initialised with weights pre-trained on the ImageNet dataset. The final fully connected layer was replaced with a classification head to output 16 classes, corresponding to the individual birds, and used a softmax activation function for probability distribution across classes.
+We used a ResNet50 deep CNN as the individual classifier, with a transfer learning approach. The model was implemented in PyTorch (1.13.1) and Torchvision (0.14.1). Our ResNet50 individual classifier was implemented in PyTorch (1.13.1) and Torchvision (0.14.1). Training was conducted on a computer node from the Life Science Compute Cluster (LiSC) with 8 CPU cores and 48 GB of RAM, equipped with an NVIDIA Tesla T4 GPU (NVIDIA
+Corporation). The system operated under Rocky Linux 9.5 (Blue Onyx), with CUDA support enabled for GPU acceleration.
 
 Input images were resized to 512×512 pixels and normalized using the standard ImageNet mean and standard deviation values. During training, data augmentation was applied in the form of random horizontal flips (probability = 0.5). The model was trained using Stochastic Gradient Descent with a momentum of 0.9, an initial learning rate of 1×10−3, and a batch size of 32. The learning rate was reduced by a factor of 0.1 every 7 epochs. The model was trained for a total of 20 epochs, with performance on the validation set monitored after each epoch to select the best performing checkpoint. The entire training process required 298 minutes (~5 hours). This selected model was then used for final evaluation on a test set, obtained from the held-out test videos, corresponding to 10% of the original videos.
 
-The performance of the model was assessed both on the validation and on the test sets, through the F1-score, which is calculated as the harmonic mean of precision and recall, combining the two into a single performance metric. Precision is defined as the ratio of true positives (TP) to the sum of true positives and false positives (FP), and recall , also known as sensitivity, is the ratio of true positives (TP) to the sum of true positives and false negatives (FN). The F1-score performance cutoff of 0.85 was established as a study-specific benchmark, as no single cutoff can be applied across studies.
+The performance of the model was assessed both on the validation and on the hold-out test set (corresponding to 10% of the original videos of each bird). The model's performance on the test set was measured on the frame-level (where each frame was an independent prediction instance) and on the video-level (where a single prediction was assigned to the entire video using majority voting of the per-frame predictions). An F1-score performance cutoff of 0.85 was established as a study-specific benchmark, as no single cutoff can be applied across studies.
 
-## 3.5. Running automated classification
+## 3 - Minimal data requirement ⏳
 
-The script determines the most likely bird ID by following these steps:
+We compared the performance of fifteen individual classifiers trained and validated on increasingly large data subsets. Subsets contained 50-1000 instances per bird, with increments of 50 instances for subsets with up to 500 instances (50, 100, 150, 200, 250, 300, 350, 400, 450, 500), and subsequent increments of 100 instances for subsets with up to 1000 instances (600, 700, 800, 900, and 1000). These amounts refer to the total number of instances available for a single bird, before training, validation, and test split (70:20:10) (Scikit-learn library v1.3.0). Subsets were created from the full dataset, regardless of viewpoint. The minimal data requirement was defined as the smallest subset size for which the model achieved an F1-score ≥ 0.85 on the validation set.
 
-1️⃣ Counting how many times each class is predicted for each frame in a subfolder. If no subfolder is provided but simply frames showing the same bird, all frames are processed as one.
+## 4 - Viewpoint classifier
 
-2️⃣ Computing a list of probabilities (confidence scores) assigned to the predicted classes, and summing the confidence scores only for the most common class. The sum is divided by most_common_count to get the average confidence. This provides inforamtion about how sure the model is about its most frequent prediction.
+## 6 - Viewpoint and data requirement
 
-3️⃣ Printing the top 3 most frequently predicted classes and how many frames they were predicted for.
-This gives information about whether other birds appear similarly frequently and whether there’s classification uncertainty.
-
-## 4. Minimal training data
-
-To determine the minimal number of instances per individual bird required to achieve an acceptable classification performance, we compared the performance of models trained and validated on an increasing number of instances, i.e. increasingly large subsets. For clarity, each subset refers to the total number of instances per individual. Each subset was further randomly split into training, validation and test subsets, corresponding to 70%, 20%, and 10%, respectively. Data from each subset was used to train and validate the classifier, and the performance of the model was evaluated solely on the validation set, and not on the test set.
+Subsets were created within each viewpoint class. The minimal data requirement was defined as the smallest subset size for which a model achieved an F1-score ≥ 0.85 on the validation set.
 
 ## 5. Results 
 
@@ -107,47 +101,36 @@ Our study demonstrated the feasibility of training a ResNet50 classifier with ca
 
 * Performance of the classifier
 
-The classifier achieved a mean F1-score of 0.9877 on the valdiaiton set, and a mean F1-score of 0.926 on the test set. Birds with fewer training instances showed slightly lower scores. 
+The individual classifier was trained on a baseline dataset of 62,198 training and 26,668 validation instances. Evaluation was performed on all frames from the held-out test videos (a total of 222,227 frames), on a frame-level and on a video-level. The model achieved a mean F1-score of 0.98 on the validation set, and 0.86 (frame-level) and 0.90 (video-level) on the held-out test set (Table 2).
 
 Classification report
 
-| Class (bird) | Valid videos | Total frames | Training set | Validation set | Test set | F1-score (Validation) | F1-score (Test) |
-|--------------|-------------:|-------------:|-------------:|---------------:|---------:|----------------------:|----------------:|
-| B02 | 3 341 | 10 349 | 7 244 | 3 105 | 35 | 0.99 | 0.886 |
-| B03 | 1 750 | 5 482 | 3 837 | 1 645 | 77 | 0.99 | 0.960 |
-| B04 | 4 333 | 11 806 | 8 264 | 3 542 | 6 | 0.99 | 0.705 |
-| B05 | 7 779 | 5 366 | 3 756 | 1 610 | 77 | 0.98 | 0.939 |
-| B07 | 3 407 | 7 124 | 4 986 | 2 138 | 92 | 0.99 | 0.962 |
-| B11 | 5 606 | 5 319 | 3 723 | 1 596 | 45 | 0.99 | 0.967 |
-| B18 | 1 581 | 1 638 | 1 146 | 492 | 75 | 0.97 | 0.966 |
-| B23 | 3 291 | 5 627 | 3 938 | 1 689 | 88 | 0.99 | 0.982 |
-| B26 | 1 635 | 1 763 | 1 234 | 529 | 131 | 0.97 | 0.935 |
-| B29 | 4 476 | 3 356 | 2 349 | 1 007 | 33 | 0.98 | 0.876 |
-| B30 | 3 033 | 2 898 | 2 028 | 870 | 8 | 0.98 | 0.875 |
-| B31 | 3 940 | 3 445 | 2 411 | 1 034 | 7 | 0.98 | 0.933 |
-| B47 | 3 124 | 2 706 | 1 894 | 812 | 95 | 0.99 | 0.945 |
-| B49 | 1 826 | 3 821 | 2 674 | 1 147 | 196 | 0.99 | 0.992 |
-| B50 | 4 079 | 7 807 | 5 464 | 2 343 | 72 | 0.99 | 0.915 |
-| B52 | 1 601 | 4 899 | 3 429 | 1 470 | 140 | 0.99 | 0.968 |
-| **Total / Mean** | **54 802** | **83 406** | **58 377** | **25 029** | **1 117** | **0.98** | **0.926** |
+| Bird ID   | Train Set | Validation Set | Test Set | F1-score (Validation) | F1-score (Test Frame-level) | F1-score (Test Video-level) |
+|-----------|-----------|----------------|----------|-------------------------|------------------------------|------------------------------|
+| BNU-RPM   | 9,916     | 4,250          | 33,276   | 0.99                    | 0.97                         | 0.98                         |
+| BNY-RPM   | 595       | 255            | 2,686    | 0.92                    | 0.83                         | 0.89                         |
+| BRG-YOM   | 12,971    | 5,560          | 48,033   | 0.99                    | 0.98                         | 0.97                         |
+| BRK-NOM   | 1,298     | 557            | 3,441    | 0.90                    | 0.82                         | 0.84                         |
+| EYB-RPM   | 8,326     | 3,569          | 28,112   | 0.99                    | 0.97                         | 0.98                         |
+| GBM-ORY   | 6,227     | 2,670          | 18,444   | 0.97                    | 0.91                         | 0.95                         |
+| GBY-ORM   | 2,831     | 1,214          | 9,356    | 0.98                    | 0.92                         | 0.94                         |
+| OEB-RPM   | 3,774     | 1,618          | 16,398   | 0.99                    | 0.90                         | 0.94                         |
+| OGY-BRM   | 3,917     | 1,680          | 18,931   | 0.99                    | 0.91                         | 0.94                         |
+| ORB-UYM   | 1,738     | 745            | 9,564    | 0.97                    | 0.85                         | 0.89                         |
+| OUB-RPM   | 1,417     | 608            | 4,323    | 0.97                    | 0.83                         | 0.87                         |
+| OYR-BGM   | 1,790     | 768            | 6,726    | 0.96                    | 0.89                         | 0.92                         |
+| RGY-BOM   | 589       | 253            | 1,805    | 0.90                    | 0.47                         | 0.60                         |
+| RYO-BGM   | 2,874     | 1,233          | 7,509    | 0.98                    | 0.82                         | 0.92                         |
+| YM-OBR    | 1,903     | 816            | 11,565   | 0.98                    | 0.94                         | 0.94                         |
+| YRU-POM   | 1,325     | 569            | 2,058    | 0.98                    | 0.84                         | 0.87                         |
+| **Total / Mean** | **62,198** | **26,668** | **222,227** | **x̄ = 0.98** | **x̄ = 0.86** | **x̄ = 0.90** |
 
-Confusion matrices showing theprediction performance on the model on validaiton and test sets
 
-The following confusion matrices shoe the distribution of predicted classes against the ground truth. The elements across the diagonal represent correctly classified instances for each bird, and the elements outside of the diagonal correspond to misclassifications.
 
-![Confusion matrix](confusion_matrices_bw.svg)
-
-* Minimal training data
-
-The following graph shows the model performance on the validation set across increasing subset sizes. The learning curve indicates a general trend of increasing F1-score with larger subset sizes. The F1-score reached approximately 0.85 with a subset of 400 instances. Beyond this point, the F1-score continued to improve but the rate of improvement diminished until reaching a 0.944 F1-score at 1000 instances.
-
-![Model performance across increasing subset sizes](Performance_across_subsets.svg)
-
-### 6. Challenges encountered and solutions implemented
 
 ### 7. Potential improvements and future work:
-* Standardising bird posture: In our current dataset, birds appear in various poses. An approach could be to train a pose estimation model, e.g. through key point detection, to filter frames based on the bird's position, e.g. keeping only frames were the bird's back is visible.
-* Leg band removal: Birds' legs are not always positioned vertically in the image. Thus, narrow structure filtering was not always successful, and there are instances where leg bands are still visible. Colour segmentation could be implemented alone or as a separate step to detect coloured bands. This approach was attempted but discarded due to the orange tones present in the background and as part of the bird's body.  A more thorough approach, not so focused on orange tones, may work better, e.g. converting the frames to different colour spaces first and then applying colour segmentation.
+
+* Leg band removal: Birds' legs are not always positioned vertically in the image. Thus, narrow structure filtering was not always successful, and there are instances where leg bands are still visible. Colour segmentation could be implemented alone or as an additional step to detect coloured bands.
 
 ### Ethics
 
@@ -155,9 +138,21 @@ Ethical approval for this study was obtained from the Animal Ethics Committee of
 
 ### Acknowledgements
 
+This work would not have been possible without the continuous support and feedback provided by Dr. Cliodhna Quigley, Dr. Leonida Fusani, Job Knoester, MSc. and Dr. Giovani Spezie. They were all truly great collaborators.
+
 The computational results of this work have been achieved using the Life Science Compute Cluster (LiSC) of the University of Vienna. Data were collected thanks to a grant of the Austrian Science Fund (FWF: W1262-B29 [https://doi.org/10.55776/W1262]).
 
-This project would not have been possible without the continuous support and feedback provided by Dr. Cliodhna Quigey, Dr. Leonida Fusani, Job Knoester, MSc. and Dr. Giovani Spezie. They are all truly great collaborators.
+This project uses [Ultralytics YOLO11](https://github.com/ultralytics/ultralytics) for detection and segmentation. If you use this repository in your research, please also cite Ultralytics YOLO11:
+
+```bibtex
+@software{yolo11_ultralytics,
+  author  = {Glenn Jocher and Jing Qiu},
+  title   = {Ultralytics YOLO11},
+  version = {11.0.0},
+  year    = {2024},
+  url     = {https://github.com/ultralytics/ultralytics},
+  license = {AGPL-3.0}
+}
 
 ### References
 
