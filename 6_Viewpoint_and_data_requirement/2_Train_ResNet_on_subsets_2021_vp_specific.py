@@ -1,3 +1,13 @@
+'''
+Trains multiple ResNet50 models, for each viewpoint (front, back, left_side, right_side, side_view) and for 
+a range of subset sizes (50-1000). For every (viewpoint, subset_size) combination, the script:
+
+1. trains a classifier,
+2. Records the best validation accuracy,
+3. Saves the best performing model, and 
+4. Creates CSV + plots of accuracy vs subset size, and an overall summary plot across viewpoints
+'''
+
 import os
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -13,8 +23,8 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torchvision.models import resnet50, ResNet50_Weights
 
-DATA_ROOT   = Path("/lisc/data/scratch/becogbio/juarez/thesis/4.4_Viewpoint_subsets/Data")
-OUTPUT_ROOT = Path("/lisc/data/scratch/becogbio/juarez/thesis/4.4_Viewpoint_subsets/training_outputs")
+DATA_ROOT   = Path("4.4_Viewpoint_subsets/Data")
+OUTPUT_ROOT = Path("4.4_Viewpoint_subsets/training_outputs")
 VIEWPOINTS  = ["front", "back", "left_side", "right_side", "side_view"]
 SUBSET_SIZES = [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000]
 

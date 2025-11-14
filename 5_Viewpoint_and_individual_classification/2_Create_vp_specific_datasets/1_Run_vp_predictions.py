@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+# Runs the viewpoint classifier on all non-test frames and creates a CSV of viewpoint predictions
+
 import os
 import csv
 import sys
