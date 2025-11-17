@@ -19,7 +19,7 @@ In this study, we aimed to develop a CNN based pipeline for automatic identifica
 
 All data used in this study was collected by Giovanni Spezie (PhD candidate at the University of Veterinary Medicine Vienna, supervised by Prof. Leonida Fusani) in Taunton National Park (Scientific), Queensland, Australia, during the 2021 breeding season, between July and November. The dataset comprised 76,645 videos, with a total of 16 individual birds. All videos were manually scored by several students prior to the realisation of this study. 
 
-## Structure of the repo
+## Structure of the repository
 
 - **`1_Data_processing/`** →  Video filtering, frame sampling, detection and segmentation of the birds, data split
 - **`2_Individual_classification/`** →  Training the individual classifier on all available data
@@ -74,8 +74,12 @@ A multistage image processing pipeline (Fig. 1) was applied to the extracted raw
 
 The final dataset, consisting of the processed masks for each individual bird, was randomly split into training and validation subsets, with a 70:30 split (Scikit-learn library v1.3.0).
 
-![Data pre-processing pipeline](./assets/Data_pre_processing_pipeline.png)
-Figure 1. Data pre-processing pipeline.
+<p align="center">
+  <img src="./assets/Data_pre_processing_pipeline.png" width="700px">
+</p>
+
+<p align="center"><em>Figure 1. Data pre-processing pipeline.</em></p>
+
 
 ## 2 - Individual classification 
 
@@ -83,9 +87,11 @@ We used a ResNet50 deep CNN as the individual classifier, with a transfer learni
 
 After training, the model evaluated on all frames from the held-out test videos (a total of 222,227 frames), at the frame-level (where each frame was an independent prediction instance) and at the video-level (where a single prediction was assigned to the entire video using majority voting of the per-frame predictions). The model achieved a mean F1-score of 0.98 on the validation set, and 0.86 (frame-level) and 0.90 (video-level) on the held-out test set (Table 1).
 
-Table 1. Classification report
+**Table 1.** Individual classification dataset characteristics and performance.
 
-| Bird ID   | Train Set | Validation Set | Test Set | F1-score (Validation) | F1-score (Test Frame-level) | F1-score (Test Video-level) |
+<div style="font-size: 60%;">
+
+| Bird ID   | Train Set | Validation Set | Test Set | F1-score (Validation) | F1-score (Test, frame-level) | F1-score (Test, video-level) |
 |-----------|-----------|----------------|----------|-------------------------|------------------------------|------------------------------|
 | BNU-RPM   | 9,916     | 4,250          | 33,276   | 0.99                    | 0.97                         | 0.98                         |
 | BNY-RPM   | 595       | 255            | 2,686    | 0.92                    | 0.83                         | 0.89                         |
@@ -103,28 +109,95 @@ Table 1. Classification report
 | RYO-BGM   | 2,874     | 1,233          | 7,509    | 0.98                    | 0.82                         | 0.92                         |
 | YM-OBR    | 1,903     | 816            | 11,565   | 0.98                    | 0.94                         | 0.94                         |
 | YRU-POM   | 1,325     | 569            | 2,058    | 0.98                    | 0.84                         | 0.87                         |
-| **Total / Mean** | **62,198** | **26,668** | **222,227** | **x̄ = 0.98** | **x̄ = 0.86** | **x̄ = 0.90** |
+| **Total/mean** | **62,198** | **26,668** | **222,227** | **x̄ = 0.98** | **x̄ = 0.86** | **x̄ = 0.90** |
+
+</div>
 
 ## 3 - Minimal data requirement 
 
 We compared the performance of fifteen individual classifiers trained and validated on increasingly large data subsets. Subsets contained 50-1000 instances per bird, with increments of 50 instances for subsets with up to 500 instances (50, 100, 150, 200, 250, 300, 350, 400, 450, 500), and subsequent increments of 100 instances for subsets with up to 1000 instances (600, 700, 800, 900, and 1000). These amounts refer to the total number of instances available for a single bird, before training, validation, and test split (70:20:10) (Scikit-learn library v1.3.0). Subsets were created from the full dataset, regardless of viewpoint. The minimal data requirement was defined as the smallest subset size for which the model achieved an F1-score ≥ 0.85 on the validation set. For the first part of the experiment, the subsets were created from the full dataset, regardless of viewpoint. Thus, each subset contained a mixture of viewpoints, as present in the original data distribution. These subsets were created from the whole of the valid videos, without video hold-out for testing. 
 
-![Minimal data requirement](assets/Performance_across_subset_sizes.svg)
+**Table 4.** Individual classification performance (F1-score) across subset sizes, per viewpoint.
+
+<div align="center">
+  
+| Subset size | Front | Back | Left side | Right side | Side view | All viewpoints |
+|-------------|-------|------|-----------|-------------|------------|-----------------|
+| 50          | 0.72  | 0.82 | 0.76      | 0.83        | 0.79       | 0.42            |
+| 100         | 0.83  | 0.88 | 0.90      | 0.87        | 0.84       | 0.55            |
+| 150         | 0.89  | 0.93 | 0.92      | 0.91        | 0.89       | 0.69            |
+| 200         | 0.92  | 0.94 | 0.94      | 0.94        | 0.91       | 0.75            |
+| 250         | 0.93  | 0.96 | 0.94      | 0.94        | 0.93       | 0.82            |
+| 300         | 0.95  | 0.96 | 0.96      | 0.96        | 0.94       | 0.84            |
+| 350         | 0.94  | 0.96 | 0.97      | 0.96        | 0.94       | 0.90            |
+| 400         | 0.95  | 0.96 | 0.97      | 0.97        | 0.95       | 0.89            |
+| 450         | 0.95  | 0.97 | 0.96      | 0.96        | 0.96       | 0.90            |
+| 500         | 0.96  | 0.98 | 0.97      | 0.98        | 0.96       | 0.91            |
+| 600         | 0.98  | 0.98 | 0.97      | 0.98        | 0.97       | 0.92            |
+| 700         | 0.97  | 0.97 | 0.98      | 0.98        | 0.97       | 0.95            |
+| 800         | 0.97  | 0.98 | 0.98      | 0.98        | 0.97       | 0.95            |
+| 900         | 0.98  | 0.99 | 0.99      | 0.99        | 0.97       | 0.95            |
+| 1000        | 0.98  | 0.99 | 0.99      | 0.99        | 0.98       | 0.95            |
+
+</div>
+
+<p align="center">
+  <img src="./assets/minimal_data_requirement_across_viewpoints.svg" width="600px">
+</p>
+
+<p align="center">
+  <em>Figure 2. Individual classification performance across subset sizes, per viewpoint.</em>
+</p>
+
+The trend of increasing performance with more instances was observed across all models, regardless of viewpoint. Classifiers trained on instances of a single viewpoint required between 100 and 150 instances per bird to reach an F1-score of 0.85. In contrast, the classifier trained on data combining all viewpoints required significantly more data, about 350 instances per bird, to achieve the same level of accuracy. Furthermore, the classifiers trained on viewpoint-specific data achieved higher final F1-scores (above 0.97) when trained with larger datasets compared to the model trained on all viewpoints, which reached a maximum F1-score of 0.95.
 
 ## 4 - Viewpoint classification
 
-We defined four viewpoints, i.e., front, back, left side, and right side, based on the morphological traits visible from each viewpoint. We first tested whether these viewpoints could be reliably distinguished through an inter-observer reliability (IOR) test, where two human annotators labelled the same randomly selected set of 400 instances. We observed strong agreement between annotators, with 87.25% raw agreement and a Cohen’s Kappa of 0.83, indicating almost perfect agreement (Landis & Koch, 1977). We observed most disagreements occurred between adjacent
-viewpoints, especially between the "back" and "left side" or "right side". Similarly, the front viewpoint was occasionally confused with "left side"  and "right side". There was no disagreement between opposing viewpoints such as front and back, or left and right viewpoints.
+We defined four viewpoints, i.e., front, back, left side, and right side, based on the morphological traits visible from each viewpoint. We first tested whether these viewpoints could be reliably distinguished through an inter-observer reliability (IOR) test, where two human annotators labelled the same randomly selected set of 400 instances. We observed strong agreement between annotators, with 87.25% raw agreement and a Cohen’s Kappa of 0.83, indicating almost perfect agreement (Landis & Koch, 1977). We observed most disagreements occurred between adjacent viewpoints, especially between the "back" and "left side" or "right side". Similarly, the front viewpoint was occasionally confused with "left side"  and "right side". There was no disagreement between opposing viewpoints such as front and back, or left and right viewpoints.
 
-Then, one of the annotators labelled 3000 instances, which was used to train and evaluate a viewpoint classification model.
+Then, one of the annotators labelled 3000 instances, which made up the training and valdiation sets. We used a ResNet18 CNN as the viewpoint classifier, with a transfer learning approach. The network was initialised with ImageNet-pretrained weights (IMAGENET1K_V1). Input images were resized to 224×224 pixels and normalized using the standard ImageNet mean and standard deviation values. During training, data augmentation was applied in the form of random rotation (±7°) and colour jitter (brightness, contrast, and saturation ±0.15; hue ±0.05). The model was trained using Stochastic Gradient Descent with a momentum of 0.9, an initial learning rate of 1×10−3, and a batch size of 32. The learning rate was reduced by a factor of 0.1 every 7 epochs. The model was trained for a total of 100 epochs, and performance on the validation set was monitored after each epoch.
 
-## 6 - Viewpoint and data requirement
+The viewpoint classifier achieved high performance across all viewpoints (F1-scores between 0.86 and 0.93). Interestingly, the front viewpoint was classified most accurately (F1 = 0.93), despite having the fewest training instances, likely because of distinctive visual features such as the light-colored breast and belly.
 
-In this experiment, subsets were created from each viewpoint, i.e., front, back, left side, right side, and side view (left + right). For each viewpoint-specific dataset, subsets of 50–1000 instances per bird were sampled following the same increments and random-splitting described in section 3. Thus, each subset contained only images from a single viewpoint, and training, validation, and test instances were randomly sampled from that viewpoint’s pool of frames.
+**Table 2. Viewpoint dataset characteristics and classification performance**
 
-### 7. Potential improvements and future work:
+| Viewpoint  | Train set | Validation set | Test set | F1-score (test set) |
+|------------|-----------|----------------|----------|----------------------|
+| Front      | 398       | 113            | 58       | 0.93                 |
+| Back       | 644       | 84             | 93       | 0.86                 |
+| Left side  | 525       | 150            | 75       | 0.88                 |
+| Right side | 494       | 141            | 71       | 0.88                 |
 
-* Leg band removal: Birds' legs are not always positioned vertically in the image. Thus, narrow structure filtering was not always successful, and there are instances where leg bands are still visible. Colour segmentation could be implemented alone or as an additional step to detect coloured bands.
+## Conclusions
+
+* Individual classification
+
+A deep learning model such as ResNet50 can be trained to reliably distinguish individual bowerbirds on single frames. 
+Using majority voting to obtain video-level predictions led to higher overall performance, likely due to reducing the impact of occasional frame-level misclassifications. 
+These results provide empirical evidence for the existence of sufficient, consistent, and learnable inter-individual variations in the visual appearance of Spotted Bowerbirds. 
+
+* Minimal data requirement
+
+An F1-score of 0.85 can be achieved with approximately 350 instances perindividual (using a 70:30 training-validation split).
+Whenever possible, increasing the number of instances to 900-1,000 might be a better option, as the models trained on these subsets achieved a higher performance (0.9542 F1-score), marginally worse than the baseline model (0.98 F1-score).
+
+* Viewpoint classification
+
+Human annotation of these viewpoints was highly consistent (87.25% raw agreement, Cohen’s Kappa = 0.83).
+The viewpoint classifier achieved high performance across all viewpoints (F1-scores between 0.86 and 0.93).
+Most classification errors occur when adjacent viewpoint features are visible, e.g., partially turned birds.
+
+* Impact of viewpopint on data requirement
+
+Models trained on a single viewpoint reached the target performance of F1 ≥ 0.85 with only 100–150 instances per bird, whereas the all-viewpoints model required approximately 350 instances per bird. 
+Including multiple viewpoints introduces additional visual variability, increasing the complexity of the classification task. Training on a single viewpoint removes this variability and allows the model to learn the discriminative features of each individual more efficiently, requiring less data. 
+
+### Potential improvements and future work
+
+* Leg band removal: Birds' legs are not always positioned vertically in the image. Thus, narrow structure filtering was not always successful, and there are instances where leg bands are still visible. An alternative to our method
+could be to train a dedicated object detection model for the automated detection and segmentation of legs and leg bands.
+
+* Implications of training and evaluating the individual classifier on data collected during a single breeding season: Birds' plumage features can change between breeding seasons due to moulting. Consequently, a model trained exclusively on data from one season may not maintain the same accuracy when applied to footage of the same individuals recorded in subsequent years. Future work could test the model's performance on data from different breeding seasons for the same individuals to assess the model's long-term usefulness.
 
 ### Ethics
 
