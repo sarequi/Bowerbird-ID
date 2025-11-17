@@ -22,9 +22,9 @@ All data used in this study was collected by Giovanni Spezie (PhD candidate at t
 ## Structure of the repo
 
 - **`1_Data_processing/`** →  Video filtering, frame sampling, detection and segmentation of the birds, data split
-- **`2_Individual_classifier/`** →  Training the individual classifier on all available data
+- **`2_Individual_classification/`** →  Training the individual classifier on all available data
 - **`3_Minimal_data_requirement/`** → Training the individual classifier on increasingly larger subsets of all available data (50-1000 instances)
-- **`4_Viewpoint_classifier/`** → Training the viewpoint classifier
+- **`4_Viewpoint_classification/`** → Training the viewpoint classifier
 - **`5_Viewpoint_and_individual_classification/`** → Training the individual classifier on instances of the birds across each viewpoint
 - **`6_Viewpoint_and_data_requirement/`** → Training the individual classifier on increasingly larger subsets of the viewpoint-specific datasets 
 
@@ -46,13 +46,11 @@ conda env create -f bird_id_env.yml --name env_name
 
 ### Hardware 
 
-Our ResNet50 model was implemented in PyTorch (1.13.1) and Torchvision (0.14.1). Training was conducted on a computer partition from the Vienna Scientific Cluster, on an NVIDIA A40 GPU (NVIDIA Corporation) and 8 CPU cores from a node equipped with 256 GB of RAM, using the CUDA framework for GPU acceleration on an AlmaLinux (8.5) operating system.
+Both of our classifiers (individual classifier and viewpoint classifier) were implemented in PyTorch (1.13.1) and Torchvision (0.14.1). Training was conducted on a computer node from the Life Science Compute Cluster (LiSC) with 8 CPU cores and 48 GB of RAM, equipped with an NVIDIA Tesla T4 GPU (NVIDIA Corporation). The system operated under Rocky Linux 9.5 (Blue Onyx), with CUDA support enabled for GPU acceleration.
 
 ## 1 - Data pre-processing 🎞️
 
-The dataset was collected by Dr. Giovanni Spezie (former PhD candidate at the University of Veterinary Medicine Vienna, supervised by Prof. Leonida Fusani) in Taunton National Park (Scientific), Queensland, Australia, during the 2021 breeding season, between July and November. Data were gathered using 17 motion-triggered camera traps (Browning, Recon Force Edge) positioned to monitor active bowers owned by previously banded birds, with one camera trap per bower. 
-
-The dataset comprised 25,234 scored videos, with individual video durations ranging from 30 seconds to 2 minutes. The videos were in the MP4 format, with a resolution of 1920×1080 pixels and a frame rate of 30 frames per second (fps).
+The dataset was collected by Dr. Giovanni Spezie (former PhD candidate at the University of Veterinary Medicine Vienna, supervised by Prof. Leonida Fusani) in Taunton National Park (Scientific), Queensland, Australia, during the 2021 breeding season, between July and November. Data were gathered using 17 motion-triggered camera traps (Browning, Recon Force Edge) positioned to monitor active bowers owned by previously banded birds, with one camera trap per bower. The dataset comprised 25,234 scored videos, with individual video durations ranging from 30 seconds to 2 minutes. The videos were in the MP4 format, with a resolution of 1920×1080 pixels and a frame rate of 30 frames per second (fps).
 
 ### 1.1. Video filtering 
 
@@ -60,11 +58,11 @@ Ground truth for individual identity was obtained from the scoring of all record
 
 ### 1.2. Frame sampling
 
-Before extracting frames, 10% of each bird’s videos were set aside as the test set, and all frames from these videos were extracted. The remaining videos were processed with OpenCV, where frames were sampled at intervals to create the training and validation sets.
+Before extracting frames, 10% of each bird’s videos were set aside for testing purposes. All frames from these videos were extracted and made up the test set. The remaining videos, i.e. 90% of all raw videos per bird, were processed with OpenCV to sample frames at regular intervals to create the training and validation sets.
 
 ### 1.3. Bird detection and segmentation
 
-A multistage image processing pipeline was applied to the extracted raw frames aiming to standardise the size and position of the bird within the frames.
+A multistage image processing pipeline (Fig. 1) was applied to the extracted raw frames aiming to standardise the size and position of the bird within each frame.
 
 * Bird detection: First, a pre-trained YOLOv11 (Ultralytics) model was used to detect the birds in each frame (confidence threshold = 0.8). For frames in which a bird was detected, the frame was cropped to the bounding box with the highest confidence score, isolating the detected bird (Figure 3b). Frames in which no bird was detected were excluded from further analysis.
 
@@ -76,34 +74,16 @@ A multistage image processing pipeline was applied to the extracted raw frames a
 
 The final dataset, consisting of the processed masks for each individual bird, was randomly split into training and validation subsets, with a 70:30 split (Scikit-learn library v1.3.0).
 
-## 2 - Individual classifier 🧠
+![Data pre-processing pipeline](./assets/Data_pre_processing_pipeline.png)
+Figure 1. Data pre-processing pipeline.
 
-We used a ResNet50 deep CNN as the individual classifier, with a transfer learning approach. The model was implemented in PyTorch (1.13.1) and Torchvision (0.14.1). Our ResNet50 individual classifier was implemented in PyTorch (1.13.1) and Torchvision (0.14.1). Training was conducted on a computer node from the Life Science Compute Cluster (LiSC) with 8 CPU cores and 48 GB of RAM, equipped with an NVIDIA Tesla T4 GPU (NVIDIA
-Corporation). The system operated under Rocky Linux 9.5 (Blue Onyx), with CUDA support enabled for GPU acceleration.
+## 2 - Individual classification 
 
-Input images were resized to 512×512 pixels and normalized using the standard ImageNet mean and standard deviation values. During training, data augmentation was applied in the form of random horizontal flips (probability = 0.5). The model was trained using Stochastic Gradient Descent with a momentum of 0.9, an initial learning rate of 1×10−3, and a batch size of 32. The learning rate was reduced by a factor of 0.1 every 7 epochs. The model was trained for a total of 20 epochs, with performance on the validation set monitored after each epoch to select the best performing checkpoint. The entire training process required 298 minutes (~5 hours). This selected model was then used for final evaluation on a test set, obtained from the held-out test videos, corresponding to 10% of the original videos.
+We used a ResNet50 deep CNN as the individual classifier, with a transfer learning approach. The model was trained on a baseline dataset of 62,198 training and 26,668 validation instances. Input images were resized to 512×512 pixels and normalized using the standard ImageNet mean and standard deviation values. During training, data augmentation was applied in the form of random horizontal flips (probability = 0.5). The model was trained using Stochastic Gradient Descent with a momentum of 0.9, an initial learning rate of 1×10−3, and a batch size of 32. The learning rate was reduced by a factor of 0.1 every 7 epochs. The model was trained for a total of 20 epochs, with performance on the validation set monitored after each epoch to select the best performing checkpoint. The entire training process required 298 minutes (~5 hours). 
 
-The performance of the model was assessed both on the validation and on the hold-out test set (corresponding to 10% of the original videos of each bird). The model's performance on the test set was measured on the frame-level (where each frame was an independent prediction instance) and on the video-level (where a single prediction was assigned to the entire video using majority voting of the per-frame predictions). An F1-score performance cutoff of 0.85 was established as a study-specific benchmark, as no single cutoff can be applied across studies.
+After training, the model evaluated on all frames from the held-out test videos (a total of 222,227 frames), at the frame-level (where each frame was an independent prediction instance) and at the video-level (where a single prediction was assigned to the entire video using majority voting of the per-frame predictions). The model achieved a mean F1-score of 0.98 on the validation set, and 0.86 (frame-level) and 0.90 (video-level) on the held-out test set (Table 1).
 
-## 3 - Minimal data requirement ⏳
-
-We compared the performance of fifteen individual classifiers trained and validated on increasingly large data subsets. Subsets contained 50-1000 instances per bird, with increments of 50 instances for subsets with up to 500 instances (50, 100, 150, 200, 250, 300, 350, 400, 450, 500), and subsequent increments of 100 instances for subsets with up to 1000 instances (600, 700, 800, 900, and 1000). These amounts refer to the total number of instances available for a single bird, before training, validation, and test split (70:20:10) (Scikit-learn library v1.3.0). Subsets were created from the full dataset, regardless of viewpoint. The minimal data requirement was defined as the smallest subset size for which the model achieved an F1-score ≥ 0.85 on the validation set.
-
-## 4 - Viewpoint classifier
-
-## 6 - Viewpoint and data requirement
-
-Subsets were created within each viewpoint class. The minimal data requirement was defined as the smallest subset size for which a model achieved an F1-score ≥ 0.85 on the validation set.
-
-## 5. Results 
-
-Our study demonstrated the feasibility of training a ResNet50 classifier with camera trap footage to identify individual Spotted Bowerbirds, achieving a mean F1-score of 0.9877 on the validation set and a mean F1-score of 0.926 on the test set. This high performance empirically supports the existence of consistent and learnable inter-individual variations in this species. A key finding was that an F1-score of ≥0.85 could be attained with a relatively modest dataset of 400 instances per individual (using a 70:30 training/validation split).
-
-* Performance of the classifier
-
-The individual classifier was trained on a baseline dataset of 62,198 training and 26,668 validation instances. Evaluation was performed on all frames from the held-out test videos (a total of 222,227 frames), on a frame-level and on a video-level. The model achieved a mean F1-score of 0.98 on the validation set, and 0.86 (frame-level) and 0.90 (video-level) on the held-out test set (Table 2).
-
-Classification report
+Table 1. Classification report
 
 | Bird ID   | Train Set | Validation Set | Test Set | F1-score (Validation) | F1-score (Test Frame-level) | F1-score (Test Video-level) |
 |-----------|-----------|----------------|----------|-------------------------|------------------------------|------------------------------|
@@ -125,8 +105,22 @@ Classification report
 | YRU-POM   | 1,325     | 569            | 2,058    | 0.98                    | 0.84                         | 0.87                         |
 | **Total / Mean** | **62,198** | **26,668** | **222,227** | **x̄ = 0.98** | **x̄ = 0.86** | **x̄ = 0.90** |
 
+## 3 - Minimal data requirement 
 
+We compared the performance of fifteen individual classifiers trained and validated on increasingly large data subsets. Subsets contained 50-1000 instances per bird, with increments of 50 instances for subsets with up to 500 instances (50, 100, 150, 200, 250, 300, 350, 400, 450, 500), and subsequent increments of 100 instances for subsets with up to 1000 instances (600, 700, 800, 900, and 1000). These amounts refer to the total number of instances available for a single bird, before training, validation, and test split (70:20:10) (Scikit-learn library v1.3.0). Subsets were created from the full dataset, regardless of viewpoint. The minimal data requirement was defined as the smallest subset size for which the model achieved an F1-score ≥ 0.85 on the validation set. For the first part of the experiment, the subsets were created from the full dataset, regardless of viewpoint. Thus, each subset contained a mixture of viewpoints, as present in the original data distribution. These subsets were created from the whole of the valid videos, without video hold-out for testing. 
 
+![Minimal data requirement](assets/Performance_across_subset_sizes.svg)
+
+## 4 - Viewpoint classification
+
+We defined four viewpoints, i.e., front, back, left side, and right side, based on the morphological traits visible from each viewpoint. We first tested whether these viewpoints could be reliably distinguished through an inter-observer reliability (IOR) test, where two human annotators labelled the same randomly selected set of 400 instances. We observed strong agreement between annotators, with 87.25% raw agreement and a Cohen’s Kappa of 0.83, indicating almost perfect agreement (Landis & Koch, 1977). We observed most disagreements occurred between adjacent
+viewpoints, especially between the "back" and "left side" or "right side". Similarly, the front viewpoint was occasionally confused with "left side"  and "right side". There was no disagreement between opposing viewpoints such as front and back, or left and right viewpoints.
+
+Then, one of the annotators labelled 3000 instances, which was used to train and evaluate a viewpoint classification model.
+
+## 6 - Viewpoint and data requirement
+
+In this experiment, subsets were created from each viewpoint, i.e., front, back, left side, right side, and side view (left + right). For each viewpoint-specific dataset, subsets of 50–1000 instances per bird were sampled following the same increments and random-splitting described in section 3. Thus, each subset contained only images from a single viewpoint, and training, validation, and test instances were randomly sampled from that viewpoint’s pool of frames.
 
 ### 7. Potential improvements and future work:
 
@@ -134,7 +128,7 @@ Classification report
 
 ### Ethics
 
-Ethical approval for this study was obtained from the Animal Ethics Committee of the Department of Agriculture and Fisheries (AEC reference number: CA 2018/04/1185), and field activities at Taunton National Park (Scientific) were approved by Queensland Wildlife and Parks Service (PTU18-001089; NPS18-001090).
+Ethical approval for collection of the data used in this study was obtained from the Animal Ethics Committee of the Department of Agriculture and Fisheries (AEC reference number: CA 2018/04/1185), and field activities at Taunton National Park (Scientific) were approved by Queensland Wildlife and Parks Service (PTU18-001089; NPS18-001090).
 
 ### Acknowledgements
 
@@ -142,23 +136,17 @@ This work would not have been possible without the continuous support and feedba
 
 The computational results of this work have been achieved using the Life Science Compute Cluster (LiSC) of the University of Vienna. Data were collected thanks to a grant of the Austrian Science Fund (FWF: W1262-B29 [https://doi.org/10.55776/W1262]).
 
-This project uses [Ultralytics YOLO11](https://github.com/ultralytics/ultralytics) for detection and segmentation. If you use this repository in your research, please also cite Ultralytics YOLO11:
+This project uses [Ultralytics YOLO11](https://github.com/ultralytics/ultralytics) for detection and segmentation. 
 
-```bibtex
-@software{yolo11_ultralytics,
-  author  = {Glenn Jocher and Jing Qiu},
-  title   = {Ultralytics YOLO11},
-  version = {11.0.0},
-  year    = {2024},
-  url     = {https://github.com/ultralytics/ultralytics},
-  license = {AGPL-3.0}
-}
+This project uses the scikit-learn library (v1.3.0): Pedregosa et al., "Scikit-learn: Machine Learning in Python", JMLR 12, pp. 2825–2830, 2011.
 
 ### References
 
 Ferreira AC, Silva LR, Renna F, Brandl HB, Renoult JP, Farine DR, et al. Deep learning‐based methods for individual recognition in small birds. Methods Ecol Evol. 2020 Sep;11(9):1072–85.   
 
 Knoester J, Spezie G, Mann DC, Fusani L. Do social interactions predict similarities in audio-visual courtship signals in spotted bowerbirds? In: Proceedings of the 10th Convention of the European Acoustics Association Forum Acusticum 2023 [Internet]. Turin, Italy: European Acoustics Association; 2024. Available from: https://dael.euracoustics.org/confs/fa2023/data/articles/000411.pdf 
+
+Landis, J. & Koch, G. The measurement of observer agreement for categorical data. Biometrics. 1977 Mar;33(1):159-74. PMID: 843571.
 
 Li S, Li J, Tang H, Qian R, Lin W. ATRW: A benchmark for Amur Tiger Re-identification in the Wild [Internet]. arXiv [cs.CV]. 2019. Available from: http://arxiv.org/abs/1906.05586
 
