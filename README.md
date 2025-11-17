@@ -1,6 +1,8 @@
 # Automated individual identification of Spotted Bowerbirds 🪶  
 
-## Introduction 📚
+📄 **[Download full thesis (PDF)](assets/Individual_ID_thesis_manuscript.pdf)**
+
+## Introduction 
 
 Spotted Bowerbirds (_Chlamydera maculata_) are medium-sized, brown passerines with characteristic spots on their wings and back. Males of this species are known for building and decorating elaborate structures called bowers, which are considered extensions of the males' phenotypes and serve solely for sexual signalling, to attract females. During the breeding season male bower owners spend much of their time in and around their bowers, which makes them ideal focal points for long-term monitoring through camera traps.
 
